@@ -19,6 +19,9 @@ import seaborn as sns
 ```{python}
 #| label: data-imports
 
+# Create an in-memory buffer
+temp = io.BytesIO()
+
 # Open the encrypted Excel file
 with open('C:/Users/martin.bloyce2/OneDrive - NHS/Documents - Regional ' +
           'Analytics - South East/South East/Analysis/Diagnostics/Assets/' +
