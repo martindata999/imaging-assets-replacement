@@ -1,0 +1,94 @@
+---
+title: "Imaging Assets Replacement 2023-24"
+execute:
+    echo: false
+format: html
+---
+
+```{python}
+#| label: library-imports
+
+import msoffcrypto
+import io
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+```
+
+
+```{python}
+#| label: data-imports
+
+# Open the encrypted Excel file
+with open('C:/Users/martin.bloyce2/OneDrive - NHS/Documents - Regional ' +
+          'Analytics - South East/South East/Analysis/Diagnostics/Assets/' +
+          '2023-24/imaging-assets-replacements/imaging-assets-replacement/' +
+          'data/NIDC_South East_202324.xlsx', 'rb') as f:
+    excel = msoffcrypto.OfficeFile(f)
+    excel.load_key(password='Snidc24dow6')
+    excel.decrypt(temp)
+
+# Read the decrypted file into a pandas DataFrame
+df = pd.read_excel(temp, sheet_name='3. Asset Register')
+
+# Drop columns: '2023/2024 Part 1', 'CollectionName' and 6 other columns
+df = df.drop(columns=['2023/2024 Part 1', 
+                      'CollectionName', 
+                      'RegionCode', 
+                      'RegionName', 
+                      'ReportingPeriodStart', 
+                      'ReportingPeriodEnd', 
+                      'SubmittedDatetime', 
+                      'SubmissionStatus'])
+
+df['Age'] = pd.to_numeric(df['Age'], errors='coerce')
+
+# load in ods lookup file
+etrust = pd.read_csv('C:/Users/martin.bloyce2/OneDrive - NHS/Documents - ' +
+                     'Regional Analytics - South East/South East/Analysis/' +
+                     'Diagnostics/Assets/2023-24/imaging-assets-replacements/' +
+                     'imaging-assets-replacement/etrust.csv', 
+                     header=None,
+                     usecols=[0,1],
+                     names=['ODS Site Code','name'])
+
+# # convert to dictionary
+etrust_dict = etrust.set_index('ODS Site Code')['name'].to_dict()
+
+# merge to get site names
+df = pd.merge(df, etrust, on='ODS Site Code', how='inner')
+
+# flag for CDCs
+df["type"] = df["name"].apply(lambda x: "CDC" if "CDC" in x else "non-CDC")
+```
+
+
+```{python}
+
+# Count of machine type by asset status
+
+# Count the occurrences
+count_data = df.groupby(['Modality_Der', 'Asset Status']).size().unstack().fillna(0)
+
+# NHS colour palette dictionary
+nhs_colours = {
+    'Asset in storage': '#d5281b', # warm yellow
+    'Covered by MES': '#212b32', # black
+    'Decommissioned': '#768692', # grey 1
+    'Due for replacement': '#7C2855', # red
+    'In Service': '#007f3b', # blue
+    'Independent Sector Asset': '#ffb81C', # yellow
+    'New additional asset': '#ffeb3b', # green
+    'New replacement asset': '#005eb8', # yellow
+    'Omitted from previous return': '#330072' # purple
+}
+
+# Plotting
+count_data.plot(kind='barh', stacked=True, color=[nhs_colours[col] for col in count_data.columns])
+plt.title('Count of Asset Status by Modality_Der')
+plt.xlabel('Count')
+plt.ylabel('Modality')
+plt.legend(title='Asset Status')
+plt.show()
+```
+
